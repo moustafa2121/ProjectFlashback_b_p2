@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34322.80
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "ProjectFlashback_b_p2", "ProjectFlashback_b_p2.pyproj", "{D865009B-8C7A-4260-9FA0-1C7AED0F3EBB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D865009B-8C7A-4260-9FA0-1C7AED0F3EBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D865009B-8C7A-4260-9FA0-1C7AED0F3EBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D865009B-8C7A-4260-9FA0-1C7AED0F3EBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D865009B-8C7A-4260-9FA0-1C7AED0F3EBB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F8F0EF97-B43C-4DAF-90AF-8275FFEA2D4C}
+	EndGlobalSection
+EndGlobal
