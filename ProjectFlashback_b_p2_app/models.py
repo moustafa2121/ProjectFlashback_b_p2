@@ -12,7 +12,6 @@ class Story(models.Model):
     storyTitle = models.CharField(max_length=100)
     storyPrompt = models.CharField(max_length=200)
     generatedOn = models.DateTimeField(null=True, blank=True)
-    
     userCreator = models.ForeignKey(CookieUser, on_delete=models.SET_NULL,
                                     null=True, blank=True)
     
@@ -27,7 +26,6 @@ class StoryStage(models.Model):
     stageStory = models.CharField(max_length=5000)
     illustrationStyle = models.CharField(max_length=100)
     imgPrompt = models.CharField(max_length=1000)
-    
     
     def __str__(self) -> str:
         return self.stageTitle
