@@ -3,9 +3,10 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-import json
+import os
 from .models import Story, StoryStage
 from .serializers import Story_ser, StoryStage_ser
+from .testFunctions import testData, delayResponse
 
 """
 The main view of the phase2
@@ -15,7 +16,7 @@ prompts the API for more data/images
 save the results of the data/images from the API in the db
 """
 @api_view(['GET'])
-def phase2View(response, batch):
+def phase2View(request, batch):
     #get story based on the batch number
     try:
         #todo: sort by most recent
@@ -36,6 +37,23 @@ def phase2View(response, batch):
 
 
 """
+gets images from the local dir given the stageNumber that was already passed to the frontend
+in the Phase2View function, and sends it to the frontend as blobs
+fetching images is separate from the phase2View since images usually take longer to load
+"""
+@api_view(['GET'])
+@delayResponse(timeMultiplier=2)
+def fetchImgFromDB(request, storyNumber, stageNumber):
+    baseImages = os.path.join('ProjectFlashback_b_p2_app', 'images')
+    imgPath = os.path.join(baseImages, str(storyNumber), str(stageNumber) + ".png")
+
+    if not os.path.exists(imgPath):
+        return HttpResponse("Image not found", status=404)
+
+    image_data = open(imgPath, "rb").read()
+    return HttpResponse(image_data, content_type="image/png")
+
+"""
 handles passing user's prompts and fetching data from the API
 It will take the user input (story subject) and it will return
 a description of it in 5 stages an image for each stage
@@ -53,6 +71,7 @@ def fetchingData(response):
     #Step 2: invoke the DAll-E api to fetch an image for each stage 
     #using the PROMPT from the chatGPT returned data, 
     #this will be invoked 5 times
+
 
 """
 Step 1: chatgpt data
@@ -80,14 +99,3 @@ def fetchDallEImg(prompt):
     
     return ''
 
-
-def testData():
-    dataFile = open('napleon_test.json', 'r')
-    data = json.load(dataFile)
-    dataFile.close()
-    print(type(data))
-    return data
-
-def testImgStatic(num):
-    image_data = open(str(num)+".png", "rb").read()
-    return HttpResponse(image_data, content_type="image/png")
