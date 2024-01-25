@@ -6,7 +6,7 @@ from .models import Story, StoryStage
 class Story_ser(serializers.ModelSerializer):
     class Meta:
         model = Story
-        exclude = ('storyTitle', 'generatedOn', 'userCreator')
+        exclude = ('storyTitle', 'generatedOn', 'userCreator', 'complete')
         
 class StoryStage_ser(serializers.ModelSerializer):
     class Meta:

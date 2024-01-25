@@ -23,3 +23,6 @@ def testData():
     print(type(data))
     return data
 
+
+#chatgpt api placeholder
+

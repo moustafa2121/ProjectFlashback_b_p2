@@ -1,5 +1,8 @@
 from django.db import models
 
+class GlobalModel(models.Model):
+    date = models.DateField()
+    requestCount = models.IntegerField(default=0)
 
 #identified by a cookie. its main purpose is to keep track what the user has prompted so far
 #to limit the number of requests
@@ -14,6 +17,7 @@ class Story(models.Model):
     generatedOn = models.DateTimeField(null=True, blank=True)
     userCreator = models.ForeignKey(CookieUser, on_delete=models.SET_NULL,
                                     null=True, blank=True)
+    complete = models.BooleanField()
     
     def __str__(self) -> str:
         return self.storyTitle
