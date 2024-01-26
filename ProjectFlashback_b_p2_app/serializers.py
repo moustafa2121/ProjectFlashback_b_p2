@@ -14,3 +14,8 @@ class StoryStage_ser(serializers.ModelSerializer):
         exclude = ('story',)
 
 
+def packIt(story, storyStages):
+    returnedStory = Story_ser(story).data
+    returnedStages = StoryStage_ser(storyStages, many=True).data
+    returnedStages.append(returnedStory)
+    return returnedStages

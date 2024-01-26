@@ -1,0 +1,32 @@
+{
+    "Stage 1": {
+        "STORY TITLE": "The Fateful Gathering",
+        "STORY": "In a dimly lit chamber within the Roman Senate, a clandestine meeting took place. Julius Caesar, unaware of the treachery that awaited him, arrived with a determined expression on his face. The atmosphere was heavy with tension as senators whispered amongst themselves, plotting their betrayal. The stage was set for an event that would go down in history.",
+        "Illustration style": "Dark and dramatic",
+        "PROMPT": "The chamber is filled with senators, their faces partially obscured by shadows. Julius Caesar stands at the center, his presence commanding respect and authority."
+    },
+    "Stage 2": {
+        "STORY TITLE": "False Loyalty",
+        "STORY": "As the meeting progressed, the conspirators skillfully masked their true intentions behind false displays of loyalty. They nodded in agreement with Caesar's words, feigning support while secretly plotting his downfall. Their eyes held a glimmer of deceit, betraying the darkness that lurked within their hearts.",
+        "Illustration style": "Subtle and deceptive",
+        "PROMPT": "The senators wear seemingly genuine smiles, but their eyes reveal their hidden motives. Caesar remains unaware of the impending betrayal, his gaze fixed on a map spread out before him."
+    },
+    "Stage 3": {
+        "STORY TITLE": "Whispers of Betrayal",
+        "STORY": "Whispers filled the air as the meeting took an unexpected turn. The conspirators, emboldened by their fellow plotters, began to openly discuss their plans to assassinate Caesar. Their words were hushed, cautious not to draw the attention of any spies or informants. The tension in the room grew palpable as the gravity of their treachery became undeniable.",
+        "Illustration style": "Eerie and secretive",
+        "PROMPT": "Senators lean in close to one another, speaking in hushed voices. Caesar's face tenses slightly, sensing that something is amiss as he overhears snippets of the whispered conversations."
+    },
+    "Stage 4": {
+        "STORY TITLE": "The Moment of Betrayal",
+        "STORY": "As the meeting reached its climax, the atmosphere shifted. The conspirators, their minds consumed by ambition and vengeance, made their move. In an orchestrated act of betrayal, they unleashed their hidden weapons, aiming for the heart of Julius Caesar. Shock and disbelief washed over the room, mingling with the scent of betrayal.",
+        "Illustration style": "Chaotic and intense",
+        "PROMPT": "Swords and daggers are raised high, glinting menacingly in the dim light. Julius Caesar is caught off guard, his expression a mix of surprise and horror as the deadly weapons descend upon him."
+    },
+    "Stage 5": {
+        "STORY TITLE": "The Tragic End",
+        "STORY": "In the aftermath of the betrayal, chaos reigned supreme. Despite his reputation as a formidable leader, Julius Caesar succumbed to his wounds, his life extinguished in the very place where he had once held power. The meeting that began with deceitful whispers ended with the tragic demise of one of history's most influential figures.",
+        "Illustration style": "Somber and mournful",
+        "PROMPT": "The room is filled with chaos and despair. Julius Caesar lies lifeless on the ground, while the conspirators disperse, their faces filled with a mix of satisfaction and regret."
+    }
+}

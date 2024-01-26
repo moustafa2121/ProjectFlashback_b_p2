@@ -30,7 +30,8 @@ class StoryStage(models.Model):
     stageStory = models.CharField(max_length=5000)
     illustrationStyle = models.CharField(max_length=100)
     imgPrompt = models.CharField(max_length=1000)
-    
+    imgExists = models.BooleanField()    
+
     def __str__(self) -> str:
         return self.stageTitle
     
