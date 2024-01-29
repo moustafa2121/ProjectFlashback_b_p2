@@ -17,7 +17,5 @@ def packIt(story, storyStages):
     returnedStory = Story_ser(story).data
     returnedStages = StoryStage_ser(storyStages, many=True).data
     returnedStages.append(returnedStory)
-    print(returnedStages)
-    print(type(returnedStages))
     # returnedStages.append({"userSubmit":False})
     return returnedStages

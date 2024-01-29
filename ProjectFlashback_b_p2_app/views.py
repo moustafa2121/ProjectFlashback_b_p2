@@ -1,17 +1,20 @@
-import glob
-from django.http import HttpResponse, JsonResponse, cookie
+from django.http import HttpResponse, JsonResponse
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import Story, StoryStage, GlobalModel
+from .models import Story, StoryStage
 from .serializers import packIt
-from .utilities import delayResponse, cookieHandler, fetchChatGptJson_test, fetchDallEImg_test, canUserPrompt, incRequestCount
-from django.utils import timezone
-import os
+from .utilities import cookieHandler, canUserPrompt, incRequestCount, saveStoryFromData, resizeImg
+from .testFunctions import delayResponse, getTestData_gpt, getTestData_dalle
+import os, requests, shutil
 
+#set the path of the img based on the story and the stage
+baseImgPath = os.path.join('ProjectFlashback_b_p2_app', 'images')
 #requests limit to limit requests for the user, and all users, respectively
 userRequestLimit, globalRequestLimit = 3, 10
 #set to True during testing to use defaily cookie/CookieUser
 testingCookie = True
+#set to true to use test data instead of prompting chatGpt API
+testingChatGpt = True
 
 """
 The main view of the phase2, returns old stories in the DB
@@ -45,8 +48,6 @@ each img is fetched individually
 @api_view(['GET'])
 #@delayResponse(timeMultiplier=2)#dectorator to delay response for testing
 def fetchImgFromDB(request, storyNumber, stageNumber):
-    #set the path of the img based on the story and the stage
-    baseImgPath = os.path.join('ProjectFlashback_b_p2_app', 'images')
     imgPath = os.path.join(baseImgPath, str(storyNumber), str(stageNumber) + ".png")
 
     #get the StoryStage instance
@@ -58,7 +59,7 @@ def fetchImgFromDB(request, storyNumber, stageNumber):
         #prompt the image, wait for it, resize it, save it, 
         #and set the storyStage.imgExists to True and if the images of all 5
         #stages are complete it will set the story to complete as well
-        newImgPath = fetchDallEImg_test(storyStage.imgPrompt, baseImgPath, storyNumber, storyStage)
+        newImgPath = fetchDallEImg(storyStage.imgPrompt, storyNumber, storyStage)
         imgData = open(newImgPath, "rb").read()
     elif not os.path.exists(imgPath):#img exist according to the DB but couldn't be found
         return HttpResponse("Image not found", status=404)
@@ -66,8 +67,6 @@ def fetchImgFromDB(request, storyNumber, stageNumber):
         imgData = open(imgPath, "rb").read()
     
     return HttpResponse(imgData, content_type="image/png")
-
-from datetime import datetime, timedelta
 
 """
 called on by the form from the frontend to process a user's input (story prompt)
@@ -91,13 +90,13 @@ def promptView(request, passedValue, **kwargs):
         #Step 1: invoke the ChatGPT api and fetch data describing the story in 5 stages.
         #it will save the new data for Story and StoryStage in the DB
         #it will return dict that contains all 5 stages.
-        newStory = fetchChatGptJson_test(passedValue, kwargs['currentUser'])
+        newStory = fetchChatGptStory(passedValue, kwargs['currentUser'])
         storyStages = StoryStage.objects.filter(story=newStory)
         returnedStages = packIt(newStory, storyStages)
         response = Response([returnedStages])
 
         #inc user/global request count
-        incRequestCount(kwargs['currentUser'])
+        # incRequestCount(kwargs['currentUser'])
 
     #return data
     return response
@@ -107,17 +106,58 @@ Step 1: chatgpt data
 takes the story as requested by the frontend/user
 saves it in the DB, returns the saved model
 """
-def fetchChatGptJson(prompt):
-    pass
+def fetchChatGptStory(prompt, currentUser, testingChatGpt=testingChatGpt):
+    if testingChatGpt:
+        data = getTestData_gpt()
+    else:#prompt chatGPT
+        pass
+    
+    #save the data to a Story/StoryStage instances and return the Story instance
+    return saveStoryFromData(data, prompt, currentUser, baseImgPath)
 
 """
 Step 2: Dall-E images
 Get images from Dall-E images based on the 
-returns an img url for the generated image that as of
-23/01/2024 expires in 4 hours
+since the URL of the generated image expires in 4 hours as of 23/01/2024 
+the images will be saved in the directory specified for that story
+and it will be named based on its stageNumber.
+returns the path to the saved image
 """
 #todo: error handling: https://platform.openai.com/docs/guides/images/error-handling
-def fetchDallEImg(prompt):
-    pass
+def fetchDallEImg(prompt, storyNumber, storyStage, testingChatGpt=testingChatGpt):
+    #get the image link
+    if testingChatGpt:
+        imgLink = getTestData_dalle(storyStage.stageNumber)
+    else:#prompt Dall-E
+       pass
 
+    #save the image
+    dirPath = os.path.join(baseImgPath, str(storyNumber))
+    res = requests.get(imgLink, stream = True)
+    if res.status_code == 200:
+        #the img save path
+        imgPath = os.path.join(dirPath, str(storyStage.stageNumber)+".png")
+        with open(imgPath,'wb') as f:
+            shutil.copyfileobj(res.raw, f)
+            #set the img to exist in the db so it can be fetched
+            storyStage.imgExists = True
+            storyStage.save()
+         
+        #if all 5 stages have their images, set the story to be complete=True
+        #todo: does this guarantee that the story will be marked as complete?
+        #need to change this, make a global variable that tracks if all images
+        #have been saved
+        if len(os.listdir(dirPath)) == 5:
+            #make the story complete so it can be fetched
+            story = Story.objects.get(pk=storyNumber)
+            story.complete = True
+            story.save()
+        
+        #resize the image to have a managable size
+        resizeImg(imgPath, imgPath)
+    else:
+        print('Image Couldn\'t be retrieved')
+    
+    #return the path of the image in the backend
+    return os.path.join(dirPath, str(storyStage.stageNumber)+".png")
 
