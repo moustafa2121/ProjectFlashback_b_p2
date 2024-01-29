@@ -1,6 +1,6 @@
 #provides decorators and test functions for the views
 
-from .models import CookieUser, Story, StoryStage
+from .models import CookieUser, Story, StoryStage, RequestTracker, GlobalModel
 from PIL import Image
 import requests, shutil, json, time, uuid, os
 from django.utils import timezone
@@ -69,10 +69,16 @@ def fetchDallEImg_test(prompt, baseImgPath, storyNumber, storyStage):
             storyStage.save()
          
         #if all 5 stages have their images, set the story to be complete=True
+        #todo: does this guarantee that the story will be marked as complete?
+        #need to change this, make a global variable that tracks if all images
+        #have been saved
         if len(os.listdir(dirPath)) == 5:
+            #make the story complete so it can be fetched
             story = Story.objects.get(pk=storyNumber)
             story.complete = True
             story.save()
+            #mark the user 
+            
         
         #resize the image to have a managable size
         resizeImg(imgPath, imgPath)
@@ -108,12 +114,15 @@ def delayResponse(timeMultiplier):
     return decorator
 
 
-#handle cookies/user wrapper for the views
+#decorator that handle cookies/user wrapper for the views
+#note that this is necessary for some Views to work properly
+# (even though there should be a seperation of concerns)
+#testingModeCookie: boolean argument if true it will use default CookieUser for testing
 def cookieHandler(testingModeCookie):
     def decorator(viewFunc):
-        def wrapper(request, passedValue, *args, **kwargs):
+        def wrapper(request, passedValue, **kwargs):
             setCookie = False
-
+    
             if testingModeCookie:#ignores the cookies sent from the frontend
                 currentUser = CookieUser.objects.get(cookie="e3d3abf1-a05a-4a97-a17e-a9c36e5a0265")
             elif request.COOKIES.get('user_id'):#if the front has a cookie, get the user or create it
@@ -123,9 +132,81 @@ def cookieHandler(testingModeCookie):
                 setCookie = True
 
             #call the view
-            response = viewFunc(request, passedValue, currentUser, setCookie, *args, **kwargs)
+            response = viewFunc(request, passedValue, currentUser=currentUser, **kwargs)
 
+            #set cookie if there is a need and attach it to the response
+            if setCookie:
+                response.set_cookie('user_id', currentUser.cookie, 
+                        expires=timezone.now() + timezone.timedelta(days=30),
+                        secure=True, httponly=True)
+                
             return response
         return wrapper
     return decorator
 
+
+"""
+a function that used by a prompting view if a user can make a prompt
+it checks for:
+1- if the user exceeded their limit of daily prompting
+2- if the global request limit is exeeded
+3- if the user currently has a story that is not complete (i.e. still fetching data from AI)
+if any of these conditions are true, the promping will be refused
+"""
+def canUserPrompt(currentUser, userRequestLimit, globalRequestLimit):
+    limitReached = (
+        #condition 1, check user request limit
+        requestCountReached(currentUser, userRequestLimit)
+        or
+        #condition 2, check the global limit
+        requestCountReached(GlobalModel.objects.all()[0], globalRequestLimit)
+        )
+
+    #condition 3, check if latest story is complete
+    completedStory = False
+    userStory = Story.objects.filter(userCreator=currentUser).order_by('-generatedOn')
+    if userStory:
+        if userStory[0].complete:
+            completedStory = True
+
+    return not limitReached and completedStory
+
+#check if an instance of type Requester has reached its given request limit
+#by checking its most recent RequestTracker's request count
+#if 24 hours has passed for the said RequestTracker, assign a new one
+def requestCountReached(requester, requestLimit):
+    currentTracker = RequestTracker.objects.filter(requester=requester).order_by('-firstRequestTime')
+    #user is new and didn't make any request yet, assign it a new RequestTracker
+    #or the latest RequestTracker has spanned 24 hours so assign a new 
+    #tracker (i.e. can make more request for the next 24 hours)
+    if not currentTracker or timePassed(currentTracker[0], 24):
+        currentTracker = RequestTracker(requestCount=0,
+                                        firstRequestTime=timezone.now(),
+                                        requester=requester)
+        currentTracker.save()
+    elif currentTracker[0].requestCount >= requestLimit:
+        return True#request limit reached
+    return False
+    
+
+#increments both the current user and the global request counts
+def incRequestCount(currentUser):
+    incRequestCount_aux(GlobalModel.objects.all()[0])
+    incRequestCount_aux(currentUser)
+#hepler for the above function
+def incRequestCount_aux(requester):
+    currentTracker = RequestTracker.objects.filter(requester=requester).order_by('-firstRequestTime')
+    if currentTracker:
+        currentTracker[0].requestCount += 1
+        currentTracker[0].save()
+    else:
+        #this assumes that the requester has no RequestTracker which is not 
+        #not possible because it should've been set by canUserPrompt function
+        pass
+
+#checks if a requestTracker's first request has passed more than the given hours
+def timePassed(requestTracker, hours=24):
+    if requestTracker:
+        timeDiff = timezone.now() - requestTracker.firstRequestTime
+        return timeDiff.total_seconds() > hours * 3600
+    return False

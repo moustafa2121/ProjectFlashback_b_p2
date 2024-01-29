@@ -1,16 +1,17 @@
+import glob
 from django.http import HttpResponse, JsonResponse, cookie
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Story, StoryStage, GlobalModel
 from .serializers import packIt
-from .utilities import delayResponse, cookieHandler, fetchChatGptJson_test, fetchDallEImg_test
+from .utilities import delayResponse, cookieHandler, fetchChatGptJson_test, fetchDallEImg_test, canUserPrompt, incRequestCount
 from django.utils import timezone
 import os
 
 #requests limit to limit requests for the user, and all users, respectively
 userRequestLimit, globalRequestLimit = 3, 10
 #set to True during testing to use defaily cookie/CookieUser
-testingModeCookie = True
+testingCookie = True
 
 """
 The main view of the phase2, returns old stories in the DB
@@ -18,25 +19,17 @@ each call is one story, also handles cookies
 Note that this only returns the Story and StoryStage as a JSON,
 images will be fetched individually by the frontend using fetchImgFromDB
 passedValue: index of queryset of Story
-currentUser: the user as passed by the cookie decorator
-setCookie: sets cookie if the user does not have one
 """
 @api_view(['GET'])
-@cookieHandler(testingModeCookie)
-def phase2View(request, passedValue, currentUser, setCookie):
+@cookieHandler(testingCookie)
+def phase2View(request, passedValue, **_):
     try:#get story based on the index number
         story = Story.objects.filter(complete=True).order_by('-generatedOn')[passedValue]
         storyStages = StoryStage.objects.filter(story=story)
         returnedStages = packIt(story, storyStages)
         returnedData = Response([returnedStages])
-    except Exception as e:
+    except Exception as _:
         returnedData = JsonResponse({'error': 'Story not found'}, status=404)
-    
-    #set cookie if there is a need
-    if setCookie:
-        returnedData.set_cookie('user_id', currentUser.cookie, 
-                        expires=timezone.now() + timezone.timedelta(days=30),
-                        secure=True, httponly=True)
     
     #return the data
     return returnedData
@@ -80,39 +73,27 @@ it makes a request to the ChatGPT
 save the results of the data/images from the API in the db
 passedValue: prompt for the story
 other arguments are the same as phase2View
+kwargs arguments:
+currentUser: the user as passed by the cookie decorator
 """
 @api_view(['GET'])
-@cookieHandler(testingModeCookie)
-def promptView(request, passedValue, currentUser, setCookie):
-    #get the global data of today (used to limit daily requests for all users)    
-    #if there is no model for today, create one
-    todayDate = timezone.now().date()
-    globalModel, created = GlobalModel.objects.get_or_create(date=todayDate)
-    
-    #check if the user can still make request and did not exceed the limit
-    if currentUser.requestCount >= userRequestLimit or globalModel.requestCount >= 10:
+@cookieHandler(testingCookie)
+def promptView(request, passedValue, **kwargs):
+    #check if the user can still make request
+    if not canUserPrompt(kwargs['currentUser'], userRequestLimit, globalRequestLimit):
         response = JsonResponse({'error': "Can't make more requests"}, status=404)
     else:#make the request
         #todo: if there is a similar item in the db, refuse the request
         #Step 1: invoke the ChatGPT api and fetch data describing the story in 5 stages.
         #it will save the new data for Story and StoryStage in the DB
         #it will return dict that contains all 5 stages.
-        newStory = fetchChatGptJson_test(passedValue, currentUser)
+        newStory = fetchChatGptJson_test(passedValue, kwargs['currentUser'])
         storyStages = StoryStage.objects.filter(story=newStory)
         returnedStages = packIt(newStory, storyStages)
         response = Response([returnedStages])
 
         #inc user/global request count
-        currentUser.requestCount += 1
-        currentUser.save()
-        globalModel.requestCount += 1
-        globalModel.save()
-
-    #set cookie if there is a need
-    if setCookie:
-        response.set_cookie('user_id', currentUser.cookie, 
-                        expires=timezone.now() + timezone.timedelta(days=30),
-                        secure=True, httponly=True)
+        incRequestCount(kwargs['currentUser'])
 
     #return data
     return response
