@@ -67,6 +67,8 @@ def fetchImgFromDB(request, storyNumber, stageNumber):
     
     return HttpResponse(imgData, content_type="image/png")
 
+from datetime import datetime, timedelta
+
 """
 called on by the form from the frontend to process a user's input (story prompt)
 it makes a request to the ChatGPT
@@ -80,8 +82,10 @@ currentUser: the user as passed by the cookie decorator
 @cookieHandler(testingCookie)
 def promptView(request, passedValue, **kwargs):
     #check if the user can still make request
-    if not canUserPrompt(kwargs['currentUser'], userRequestLimit, globalRequestLimit):
-        response = JsonResponse({'error': "Can't make more requests"}, status=404)
+    canPrompt, reason, checkAgainTime = canUserPrompt(kwargs['currentUser'], userRequestLimit, globalRequestLimit)
+    if not canPrompt:
+        response = JsonResponse({'reason': reason,
+                                 'checkAgainTime': checkAgainTime}, status=429)
     else:#make the request
         #todo: if there is a similar item in the db, refuse the request
         #Step 1: invoke the ChatGPT api and fetch data describing the story in 5 stages.

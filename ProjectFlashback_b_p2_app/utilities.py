@@ -4,6 +4,7 @@ from .models import CookieUser, Story, StoryStage, RequestTracker, GlobalModel
 from PIL import Image
 import requests, shutil, json, time, uuid, os
 from django.utils import timezone
+from datetime import timedelta, datetime
 
 """
 test function for fetching data from chatGPT api
@@ -152,24 +153,40 @@ it checks for:
 2- if the global request limit is exeeded
 3- if the user currently has a story that is not complete (i.e. still fetching data from AI)
 if any of these conditions are true, the promping will be refused
+
+it returns three values
+1- if the user canPrompt
+2- if 1 is True, specify the reason for the request limit
+3- if 1 is True, specify time to check again
 """
 def canUserPrompt(currentUser, userRequestLimit, globalRequestLimit):
-    limitReached = (
-        #condition 1, check user request limit
-        requestCountReached(currentUser, userRequestLimit)
-        or
-        #condition 2, check the global limit
-        requestCountReached(GlobalModel.objects.all()[0], globalRequestLimit)
-        )
-
+    #if request limit has reached
+    limitReached = False
+    #default reason
+    reason = 'on-going story'
+    #default check again time (estimated time for a story to complete)
+    #in seconds
+    checkAgainTime = 120
+    
     #condition 3, check if latest story is complete
     completedStory = False
     userStory = Story.objects.filter(userCreator=currentUser).order_by('-generatedOn')
     if userStory:
         if userStory[0].complete:
             completedStory = True
+            
+    #condition 1, check user request limit
+    limitReached1, remainingTime1 = requestCountReached(currentUser, userRequestLimit)
+    #condition 2, check the global limit
+    limitReached2, remainingTime2 = requestCountReached(GlobalModel.objects.all()[0], globalRequestLimit)
+    
+    #if the user or global request limit has reached, then specify checkAgainTime
+    if limitReached1 or limitReached2:
+        reason = 'request limit'
+        limitReached = True
+        checkAgainTime = remainingTime1 if remainingTime1 > remainingTime2 else remainingTime2
 
-    return not limitReached and completedStory
+    return (not limitReached and completedStory), reason, checkAgainTime
 
 #check if an instance of type Requester has reached its given request limit
 #by checking its most recent RequestTracker's request count
@@ -185,8 +202,9 @@ def requestCountReached(requester, requestLimit):
                                         requester=requester)
         currentTracker.save()
     elif currentTracker[0].requestCount >= requestLimit:
-        return True#request limit reached
-    return False
+        #request limit reached
+        return True, remainingTime(currentTracker[0].firstRequestTime)
+    return False, 0
     
 
 #increments both the current user and the global request counts
@@ -210,3 +228,15 @@ def timePassed(requestTracker, hours=24):
         timeDiff = timezone.now() - requestTracker.firstRequestTime
         return timeDiff.total_seconds() > hours * 3600
     return False
+
+
+#given a time, it will calculate how many hours left for 24 
+#hours to span from the given time, used to calculate time when a user
+#can prompt again (so the front does not show the prompty submit 
+#until that time has passed, thus limiting prompty requests)
+def remainingTime(startTime):
+    endTime = startTime + timedelta(hours=24)
+    timeDiff = endTime - timezone.now()
+    return timeDiff.total_seconds()
+    
+
