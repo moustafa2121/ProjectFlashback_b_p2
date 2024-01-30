@@ -1,20 +1,25 @@
 #provides decorators and test functions for the views
 
-import json, time
+import json, time, os, shutil
 from .models import Story
 
 """
 test function for fetching test data that have the same format
 as a ChatGPT data
 """
-def getTestData_gpt():
-    with open("caesar.json", 'r') as file:
+def getTestData_gpt(baseImgPath):
+    with open("caesarTest.json", 'r') as file:
         data = json.load(file)
     
     #delete the story to simulate adding it as if a new one
-    newStory = Story.objects.get(storyTitle="new title")
-    newStory.delete()
-    
+    if Story.objects.filter(storyTitle="test title"):
+        newStory = Story.objects.get(storyTitle="test title")
+        dirPath = os.path.join(baseImgPath, str(newStory.pk))
+        newStory.delete()
+        #delete the dir of images
+        if os.path.isdir(dirPath):
+            shutil.rmtree(dirPath)
+        
     return data
     
 """
@@ -30,19 +35,16 @@ def getTestData_dalle(stageNumber):
                 'https://cottagesatblackadonfarm.co.uk/wp-content/uploads/Blackadon-March-043-2.jpg']
     
     return donkeyLst[stageNumber-1]
-    
 
 """
 decorator that delays view functions
 simulates getting data from the API to test frontend functionality
 """
-def delayResponse(timeMultiplier):
+def delayResponse(delayTime):
     def decorator(viewFunc):
         def wrapper(request, *args, **kwargs):
-            delayTime = timeMultiplier * int(kwargs.get('stageNumber', 0))
             time.sleep(delayTime)
             response = viewFunc(request, *args, **kwargs)
-
             return response
         return wrapper
     return decorator

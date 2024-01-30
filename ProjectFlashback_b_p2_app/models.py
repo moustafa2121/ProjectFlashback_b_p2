@@ -1,6 +1,5 @@
 from django.db import models
 
-
 #a model that tracks how many requests a Requester has made
 #also helps historical data (later features)
 class RequestTracker(models.Model):

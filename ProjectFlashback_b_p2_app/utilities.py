@@ -2,24 +2,31 @@
 
 from .models import CookieUser, Story, StoryStage, RequestTracker, GlobalModel
 from PIL import Image
-import uuid, os
+import uuid, os, json
 from django.utils import timezone
 from datetime import timedelta
 
 #given data fetched from ChatGPT, save it to the DB models,
 #it returns an instance of Story
 #also creates new directory for the images for this story
-def saveStoryFromData(data, prompt, currentUser, baseImgPath):
+def saveStoryFromData(data, prompt, currentUser, baseImgPath, testingChatGpt):
+    storyTitle = "test title" if testingChatGpt else "new title"
     #save the story to the DB
-    newStory = Story(storyTitle="new title", 
+    newStory = Story(storyTitle=storyTitle, 
                         storyPrompt=prompt,
                         generatedOn=timezone.now(), 
                         userCreator=currentUser,
                         complete=False)
     newStory.save()
     
+    # saves data to .json to validate the format
+    # json_object = json.dumps(data, indent=4)
+    # with open("test2.json", "w") as outfile:
+    #     outfile.write(json_object)
+        
     #save the story stages to the DB
     for i, key in enumerate(data.keys()):
+        print("i=", key)
         storyStage = StoryStage(story=newStory, 
                                 stageNumber=i+1,
                                 stageTitle=data[key]["STORY TITLE"],
@@ -38,7 +45,7 @@ def saveStoryFromData(data, prompt, currentUser, baseImgPath):
     #return the new story instance
     return newStory
 
-#resuzes the given image
+#resizes the given image
 def resizeImg(imgPath, imgOutput, newSize=(750,750)):
     try:
         with Image.open(imgPath) as img:
@@ -48,10 +55,9 @@ def resizeImg(imgPath, imgOutput, newSize=(750,750)):
         print(f"Error resizing image: {e}")
         
 
-
-#decorator that handle cookies/user wrapper for the views
+#decorator that handle cookies
 #note that this is necessary for some Views to work properly
-# (even though there should be a seperation of concerns)
+#(even though there should be a seperation of concerns)
 #testingModeCookie: boolean argument if true it will use default CookieUser for testing
 def cookieHandler(testingModeCookie):
     def decorator(viewFunc):
@@ -86,12 +92,12 @@ it checks for:
 1- if the user exceeded their limit of daily prompting
 2- if the global request limit is exeeded
 3- if the user currently has a story that is not complete (i.e. still fetching data from AI)
-if any of these conditions are true, the promping will be refused
+if any of these conditions are true, the prompting will be refused
 
 it returns three values
-1- if the user canPrompt
-2- if 1 is True, specify the reason for the request limit
-3- if 1 is True, specify time to check again
+1- boolean: if the user canPrompt
+2- string: if 1 is True, specify the reason for the request limit
+3- int: if 1 is True, specify time (in seconds) to check again
 """
 def canUserPrompt(currentUser, userRequestLimit, globalRequestLimit):
     #if request limit has reached
@@ -99,16 +105,15 @@ def canUserPrompt(currentUser, userRequestLimit, globalRequestLimit):
     #default reason
     reason = 'on-going story'
     #default check again time (estimated time for a story to complete)
-    #in seconds
     checkAgainTime = 120
     
     #condition 3, check if latest story is complete
-    completedStory = False
+    completedStory = True
     userStory = Story.objects.filter(userCreator=currentUser).order_by('-generatedOn')
     if userStory:
-        if userStory[0].complete:
-            completedStory = True
-            
+        if not userStory[0].complete:
+            completedStory = False
+    
     #condition 1, check user request limit
     limitReached1, remainingTime1 = requestCountReached(currentUser, userRequestLimit)
     #condition 2, check the global limit
@@ -166,8 +171,8 @@ def timePassed(requestTracker, hours=24):
 
 #given a time, it will calculate how many hours left for 24 
 #hours to span from the given time, used to calculate time when a user
-#can prompt again (so the front does not show the prompty submit 
-#until that time has passed, thus limiting prompty requests)
+#can prompt again (so the front does not show the prompt submit 
+#until that time has passed, thus limiting prompt requests)
 def remainingTime(startTime):
     endTime = startTime + timedelta(hours=24)
     timeDiff = endTime - timezone.now()

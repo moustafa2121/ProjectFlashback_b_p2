@@ -39,6 +39,7 @@
     <Compile Include="ProjectFlashback_b_p2_app\apps.py" />
     <Compile Include="ProjectFlashback_b_p2_app\migrations\__init__.py" />
     <Compile Include="ProjectFlashback_b_p2_app\models.py" />
+    <Compile Include="ProjectFlashback_b_p2_app\openAIInterface.py" />
     <Compile Include="ProjectFlashback_b_p2_app\serializers.py" />
     <Compile Include="ProjectFlashback_b_p2_app\testFunctions.py" />
     <Compile Include="ProjectFlashback_b_p2_app\utilities.py" />
