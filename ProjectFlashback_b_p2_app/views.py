@@ -14,7 +14,7 @@ baseImgPath = os.path.join('ProjectFlashback_b_p2_app', 'images')
 #requests limit to limit requests for the user, and all users, respectively
 userRequestLimit, globalRequestLimit = 3, 10
 #set to True during testing to use default cookie/CookieUser
-testingCookie = True
+testingCookie = False
 #set to true to use test data instead of prompting chatGpt API
 testingChatGpt = False
 
