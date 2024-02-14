@@ -110,9 +110,14 @@ def canUserPrompt(currentUser, userRequestLimit, globalRequestLimit):
     #condition 3, check if latest story is complete
     completedStory = True
     userStory = Story.objects.filter(userCreator=currentUser).order_by('-generatedOn')
-    if userStory:
-        if not userStory[0].complete:
-            completedStory = False
+    if userStory:#if there are stories
+        if not userStory[0].complete:#if the lastest story is incomplete
+            #if the incomplete story hasn't finished 5 minutes after initiated, then delete it
+            if timePassed_aux(userStory[0].generatedOn, 180):
+                print("delete")
+                #userStory[0].delete()
+            else:#else the story is processing
+                completedStory = False
     
     #condition 1, check user request limit
     limitReached1, remainingTime1 = requestCountReached(currentUser, userRequestLimit)
@@ -135,7 +140,7 @@ def requestCountReached(requester, requestLimit):
     #user is new and didn't make any request yet, assign it a new RequestTracker
     #or the latest RequestTracker has spanned 24 hours so assign a new 
     #tracker (i.e. can make more request for the next 24 hours)
-    if not currentTracker or timePassed(currentTracker[0], 24):
+    if not currentTracker or timePassed(currentTracker[0], 24*3600):
         currentTracker = RequestTracker(requestCount=0,
                                         firstRequestTime=timezone.now(),
                                         requester=requester)
@@ -161,13 +166,16 @@ def incRequestCount_aux(requester):
         #not possible because it should've been set by canUserPrompt function
         pass
 
-#checks if a requestTracker's first request has passed more than the given hours
-def timePassed(requestTracker, hours=24):
+#checks if a requestTracker's first request has passed more than the
+# given time
+def timePassed(requestTracker, timePassed=24*3600):
     if requestTracker:
-        timeDiff = timezone.now() - requestTracker.firstRequestTime
-        return timeDiff.total_seconds() > hours * 3600
+        return timePassed_aux(requestTracker.firstRequestTime, timePassed)
     return False
 
+def timePassed_aux(givenTime, timePassed):
+    timeDiff = timezone.now() - givenTime
+    return timeDiff.total_seconds() > timePassed
 
 #given a time, it will calculate how many hours left for 24 
 #hours to span from the given time, used to calculate time when a user

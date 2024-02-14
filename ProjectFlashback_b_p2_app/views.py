@@ -102,6 +102,7 @@ def promptView(request, passedValue, **kwargs):
         except Exception as e:#something went wrong
             print("error prompting ChatGPT", e)
             response = JsonResponse({}, status=422)
+            
 
         #inc user/global request count
         incRequestCount(kwargs['currentUser'])
